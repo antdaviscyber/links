@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ant Davis | Keeping Cyber Simple</title>
-<meta name="description" content="Everywhere to find Ant Davis: cyber news explained, the Click Happens podcast, free tools and more.">
+<title>Click Happens: Human Cyber News with Ant Davis</title>
+<meta name="description" content="Listen to the latest episode of Click Happens: Human Cyber News with Ant Davis, on YouTube, Spotify, Apple Podcasts and more.">
 <meta name="theme-color" content="#000000">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Ant Davis | Keeping Cyber Simple">
-<meta property="og:description" content="Everywhere to find Ant Davis: cyber news explained, the Click Happens podcast, free tools and more.">
-<meta property="og:url" content="https://links.antdavis.com">
+<meta property="og:title" content="Click Happens: Human Cyber News with Ant Davis">
+<meta property="og:description" content="Listen to the latest episode on YouTube, Spotify, Apple Podcasts and more.">
+<meta property="og:url" content="https://podcast.antdavis.com">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,6 +75,10 @@ a.link:active{transform:scale(.99)}
 footer{margin-top:34px;text-align:center;font-size:12px;color:#666}
 footer a{color:#888;text-decoration:none}
 .note{margin:0 0 14px;text-align:center;font-size:12px;color:var(--mut)}
+.label{margin:20px 0 0;font-size:12px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--y)}
+body.pod .avatar{width:220px;height:220px;border-radius:26px;font-size:76px;box-shadow:0 0 0 3px #000,0 0 0 5px var(--y),0 18px 60px rgba(254,207,0,.28)}
+body.pod h1{font-size:34px}
+body.pod .bio{color:var(--txt);font-size:18px;font-weight:700;line-height:1.35;margin-top:6px;max-width:420px}
 </style>
 </head>
 <body>
@@ -83,23 +87,28 @@ footer a{color:#888;text-decoration:none}
     <div class="avatar" id="avatar">AD</div>
     <h1 id="name">Ant Davis</h1>
     <p class="tag" id="tagline">Keeping Cyber Simple</p>
+    <p class="label" id="eplabel" hidden>Latest episode</p>
     <p class="bio" id="bio"></p>
   </header>
   <main id="links"></main>
   <noscript>
-    <a class="link" href="https://instagram.com/antdaviscyber"><div class="body"><div class="t">Instagram</div></div></a>
-    <a class="link" href="https://tiktok.com/@antdaviscyber"><div class="body"><div class="t">TikTok</div></div></a>
-    <a class="link" href="https://youtube.com/@antdaviscyber"><div class="body"><div class="t">YouTube</div></div></a>
-    <a class="link" href="https://linkedin.com/in/antdaviscyber"><div class="body"><div class="t">LinkedIn</div></div></a>
+    <a class="link" href="https://youtube.com/@antdaviscyber"><div class="body"><div class="t">Watch on YouTube</div></div></a>
+    <a class="link" href="https://open.spotify.com/show/7rwzcRsKrXbASFBfiXoCZ6"><div class="body"><div class="t">Listen on Spotify</div></div></a>
+    <a class="link" href="https://podcasts.apple.com/us/podcast/id1784126196"><div class="body"><div class="t">Listen on Apple Podcasts</div></div></a>
+    <a class="link" href="https://pod.link/1784126196"><div class="body"><div class="t">More ways to listen</div></div></a>
   </noscript>
   <footer>@antdaviscyber &middot; <a href="https://antdavis.com">antdavis.com</a></footer>
 </div>
 
+<script>window.LINKS_PAGE = "podcast";</script>
 <script src="/config.js"></script>
 <script>
 (function () {
   var C = window.LINKS_CONFIG, ICONS = window.LINK_ICONS;
-  var CACHE_KEY = "ant_links_cache_v1";
+  var PAGE = window.LINKS_PAGE || "main";
+  var IS_POD = PAGE === "podcast";
+  if (IS_POD) document.body.classList.add("pod");
+  var CACHE_KEY = "ant_links_cache_v1_" + PAGE;
   var DAY = 864e5;
 
   // Traffic source, from links like links.antdavis.com/?s=ig
@@ -187,9 +196,13 @@ footer a{color:#888;text-decoration:none}
 
   function render(data, note) {
     var s = data.settings || {};
+    var av0 = document.getElementById("avatar");
     document.getElementById("name").textContent = s.display_name || "Ant Davis";
     document.getElementById("tagline").textContent = s.tagline || "";
     document.getElementById("bio").textContent = s.bio || "";
+    document.getElementById("eplabel").hidden = !(IS_POD && s.bio);
+    var initials = String(s.display_name || "Ant Davis").split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join("");
+    if (!(s.avatar_url && /^https:\/\//i.test(s.avatar_url))) av0.textContent = initials;
     var av = document.getElementById("avatar");
     if (s.avatar_url && /^https:\/\//i.test(s.avatar_url)) {
       av.textContent = "";
@@ -234,7 +247,7 @@ footer a{color:#888;text-decoration:none}
   var cached = readCache();
   if (cached) render(cached);
 
-  rpc("get_page")
+  rpc("get_page", { p_page: PAGE })
     .then(function (r) { if (!r.ok) throw new Error("bad status"); return r.json(); })
     .then(function (data) {
       if (!data || !data.links) throw new Error("bad data");
@@ -243,14 +256,14 @@ footer a{color:#888;text-decoration:none}
     })
     .catch(function () {
       if (cached) return; // already showing the saved copy
-      render({ settings: {}, links: C.FALLBACK_LINKS }, "Showing my main profiles while the rest loads.");
+      render({ settings: IS_POD ? { display_name: "Click Happens", tagline: "Human Cyber News with Ant Davis" } : {}, links: IS_POD ? C.FALLBACK_LINKS_PODCAST : C.FALLBACK_LINKS }, IS_POD ? "Showing the main places to listen while the rest loads." : "Showing my main profiles while the rest loads.");
     });
 
   // Count the visit once per browser session.
   try {
-    if (!sessionStorage.getItem("ant_links_viewed")) {
-      sessionStorage.setItem("ant_links_viewed", "1");
-      rpc("track_view", { p_source: SRC }, { keepalive: true }).catch(function () {});
+    if (!sessionStorage.getItem("ant_links_viewed_" + PAGE)) {
+      sessionStorage.setItem("ant_links_viewed_" + PAGE, "1");
+      rpc("track_view", { p_source: SRC, p_page: PAGE }, { keepalive: true }).catch(function () {});
     }
   } catch (e) {}
 })();
