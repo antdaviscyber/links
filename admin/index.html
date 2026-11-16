@@ -99,7 +99,7 @@ td.num,th.num{text-align:right}
   var app = document.getElementById("app");
 
   var S = {
-    tab: "links", links: [], partners: [], settings: {},
+    tab: "links", page: "main", links: [], partners: [], settings: {},
     linkClicks: {}, partnerClicks: {}, editing: null, adding: false,
     partnerForm: null, report: null,
     rep: { partner: "", range: "30", from: "", to: "" }
@@ -170,9 +170,9 @@ td.num,th.num{text-align:right}
     var from = new Date(Date.now() - 30 * 864e5).toISOString();
     var to = new Date(Date.now() + 864e5).toISOString();
     var out = await Promise.all([
-      sb.from("links").select("*").order("sort_order").order("created_at"),
+      sb.from("links").select("*").eq("page", S.page).order("sort_order").order("created_at"),
       sb.from("partners").select("*").order("name"),
-      sb.from("settings").select("*").eq("id", 1).single(),
+      sb.from("settings").select("*").eq("page", S.page).single(),
       sb.rpc("link_stats", { p_from: from, p_to: to }),
       sb.rpc("partner_summary", { p_from: from, p_to: to })
     ]);
@@ -196,11 +196,27 @@ td.num,th.num{text-align:right}
       '<a class="btn sm" href="/" target="_blank" rel="noopener">View page</a> ' +
       '<button class="btn sm" data-a="signout">Sign out</button></div></div>' +
       '<div class="tabs no-print">' + tabs.map(function (t) { return '<button class="tab' + (S.tab === t[0] ? " on" : "") + '" data-a="tab" data-v="' + t[0] + '">' + t[1] + "</button>"; }).join("") + "</div>" +
-      body;
+      ((S.tab === "links" || S.tab === "profile") ? pageBar() : "") + body;
+  }
+
+  function pageBar() {
+    var pages = [["main", "Main links page"], ["podcast", "Podcast page"]];
+    return '<div class="no-print" style="margin-bottom:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="hint">Editing:</span>' +
+      pages.map(function (p) { return '<button class="btn sm' + (S.page === p[0] ? " pri" : "") + '" data-a="page" data-v="' + p[0] + '">' + p[1] + "</button>"; }).join("") + "</div>";
+  }
+
+  function episodePanel() {
+    var s = S.settings || {};
+    return '<form class="panel no-print" id="episodeForm"><h3 style="margin-bottom:4px">This week\'s episode</h3>' +
+      '<p class="hint" style="margin:0 0 12px">Paste the new episode title and each platform\'s link for it, then save once. Leave a link as the show link if you do not have the episode link yet.</p><div class="grid">' +
+      '<div class="full"><label>Episode title</label><input name="bio" value="' + esc(s.bio || "") + '"></div>' +
+      '<div class="full"><label>Cover art URL (https)</label><input name="avatar_url" placeholder="https://..." value="' + esc(s.avatar_url || "") + '"></div>' +
+      S.links.map(function (l) { return '<div class="full"><label>' + esc(l.title) + '</label><input name="u_' + esc(l.id) + '" value="' + esc(l.url) + '"></div>'; }).join("") +
+      '</div><div style="margin-top:14px"><button class="btn pri" type="submit">Save episode</button></div></form>';
   }
 
   function viewLinks() {
-    var html = '<div class="no-print" style="margin-bottom:14px"><button class="btn pri" data-a="newlink">+ Add link</button> <span class="hint">Clicks shown are the last 30 days.</span></div>';
+    var html = (S.page === "podcast" ? episodePanel() : "") + '<div class="no-print" style="margin-bottom:14px"><button class="btn pri" data-a="newlink">+ Add link</button> <span class="hint">Clicks shown are the last 30 days.</span></div>';
     if (S.adding || S.editing) html += linkForm(S.editing ? S.links.filter(function (l) { return l.id === S.editing; })[0] || {} : {});
     if (!S.links.length) html += '<p class="hint">No links yet.</p>';
     S.links.forEach(function (l, i) {
@@ -317,13 +333,13 @@ td.num,th.num{text-align:right}
 
   function viewProfile() {
     var s = S.settings;
-    var base = "https://links.antdavis.com/";
+    var base = S.page === "podcast" ? "https://podcast.antdavis.com/" : "https://links.antdavis.com/";
     var srcs = [["Instagram bio", "ig"], ["TikTok bio", "tiktok"], ["YouTube", "yt"], ["LinkedIn", "li"], ["Newsletter", "news"], ["Email signature", "email"]];
     return '<form class="panel" id="profileForm"><h3 style="margin-bottom:12px">Page profile</h3><div class="grid">' +
       '<div><label>Name</label><input name="display_name" required value="' + esc(s.display_name || "") + '"></div>' +
       '<div><label>Tagline</label><input name="tagline" value="' + esc(s.tagline || "") + '"></div>' +
-      '<div class="full"><label>Short bio</label><textarea name="bio" rows="2">' + esc(s.bio || "") + "</textarea></div>" +
-      '<div class="full"><label>Photo URL (https, optional)</label><input name="avatar_url" placeholder="https://..." value="' + esc(s.avatar_url || "") + '"></div></div>' +
+      '<div class="full"><label>' + (S.page === "podcast" ? "Latest episode title" : "Short bio") + '</label><textarea name="bio" rows="2">' + esc(s.bio || "") + "</textarea></div>" +
+      '<div class="full"><label>' + (S.page === "podcast" ? "Cover art URL (https)" : "Photo URL (https, optional)") + '</label><input name="avatar_url" placeholder="https://..." value="' + esc(s.avatar_url || "") + '"></div></div>' +
       '<div style="margin-top:14px"><button class="btn pri" type="submit">Save profile</button></div></form>' +
       '<div class="panel"><h3 style="margin-bottom:6px">Tracked bio links</h3><p class="hint">Use a different link on each platform. Reports then show which platform sent each click.</p>' +
       srcs.map(function (x) { var u = base + "?s=" + x[1]; return '<div class="copy"><span style="width:130px;flex:none">' + esc(x[0]) + "</span><code>" + esc(u) + '</code><button class="btn sm" data-a="copy" data-v="' + esc(u) + '">Copy</button></div>'; }).join("") + "</div>";
@@ -335,7 +351,7 @@ td.num,th.num{text-align:right}
     var url = String(f.get("url") || "").trim();
     if (!/^(https?:\/\/|mailto:)/i.test(url)) url = "https://" + url;
     var row = {
-      title: String(f.get("title") || "").trim(), url: url,
+      title: String(f.get("title") || "").trim(), url: url, page: S.page,
       subtitle: String(f.get("subtitle") || "").trim() || null,
       icon: f.get("icon") || null,
       section: String(f.get("section") || "").trim() || null,
@@ -406,11 +422,25 @@ td.num,th.num{text-align:right}
       if (r.error) return toast(r.error.message, true);
       S.partnerForm = null; toast("Saved"); return load();
     }
+    if (fid === "episodeForm") {
+      var q = new FormData(e.target), cover = String(q.get("avatar_url") || "").trim();
+      if (cover && !/^https:\/\//i.test(cover)) return toast("Cover art URL must start with https://", true);
+      var jobs = [sb.from("settings").update({ bio: String(q.get("bio") || "").trim() || null, avatar_url: cover || null }).eq("page", S.page)];
+      S.links.forEach(function (l) {
+        var u = String(q.get("u_" + l.id) || "").trim();
+        if (!u || u === l.url) return;
+        if (!/^(https?:\/\/|mailto:)/i.test(u)) u = "https://" + u;
+        jobs.push(sb.from("links").update({ url: u }).eq("id", l.id));
+      });
+      var rs = await Promise.all(jobs), bad = rs.filter(function (x) { return x.error; })[0];
+      if (bad) return toast(bad.error.message, true);
+      toast("Episode updated"); return load();
+    }
     if (fid === "profileForm") {
       var p = new FormData(e.target);
       var av = String(p.get("avatar_url") || "").trim();
       if (av && !/^https:\/\//i.test(av)) return toast("Photo URL must start with https://", true);
-      var r2 = await sb.from("settings").update({ display_name: String(p.get("display_name")).trim(), tagline: String(p.get("tagline") || "").trim() || null, bio: String(p.get("bio") || "").trim() || null, avatar_url: av || null }).eq("id", 1);
+      var r2 = await sb.from("settings").update({ display_name: String(p.get("display_name")).trim(), tagline: String(p.get("tagline") || "").trim() || null, bio: String(p.get("bio") || "").trim() || null, avatar_url: av || null }).eq("page", S.page);
       if (r2.error) return toast(r2.error.message, true);
       toast("Saved"); return load();
     }
@@ -420,6 +450,7 @@ td.num,th.num{text-align:right}
     var b = e.target.closest("[data-a]");
     if (!b) return;
     var a = b.dataset.a, id = b.dataset.id, v = b.dataset.v;
+    if (a === "page") { S.page = v; S.adding = false; S.editing = null; await load(); return; }
     if (a === "tab") { S.tab = v; S.adding = false; S.editing = null; S.partnerForm = null; render(); }
     else if (a === "signout") { await sb.auth.signOut(); renderLogin(); }
     else if (a === "newlink") { S.adding = true; S.editing = null; render(); window.scrollTo(0, 0); }
